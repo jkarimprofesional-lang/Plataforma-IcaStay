@@ -1,0 +1,1 @@
+# IcaStay - Plataforma de Reservas con Trazabilidad
