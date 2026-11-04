@@ -5,11 +5,29 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// Roles definidos en nuestro PROJECT_BLUEPRINT.md (RF-01)
+enum Role {
+  GUEST
+  HOTEL_PARTNER
+  ADMIN
+}
+
+// Tabla de Usuarios en PostgreSQL
+model User {
+  id               Int      @id @default(autoincrement())
+  name             String
+  email            String   @unique
+  passwordHash     String
+  role             Role     @default(GUEST)
+  travelPreference String?  // Opcional: guarda la respuesta del Onboarding (Pareja, Negocios, Familia, Aventura)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

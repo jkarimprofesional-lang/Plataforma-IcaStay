@@ -1,12 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// Rutas de la API
+app.use('/api/auth', authRoutes);
 
 // Ruta principal (Raíz)
 app.get('/', (req, res) => {
