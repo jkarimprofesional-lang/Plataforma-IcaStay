@@ -1,7 +1,10 @@
+
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
+const hotelRoutes = require('./routes/hotelRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -11,13 +14,12 @@ app.use(express.json());
 
 // Rutas de la API
 app.use('/api/auth', authRoutes);
+app.use('/api/hotels', hotelRoutes);
 
-// Ruta principal (Raíz)
 app.get('/', (req, res) => {
   res.send('Bienvenido a la API de IcaStay 🏨');
 });
 
-// Ruta de verificación de estado (Health Check)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -26,7 +28,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Encendemos el servidor verificando posibles errores de puerto
 app.listen(PORT, (error) => {
   if (error) {
     console.error(`❌ Error al iniciar el servidor en el puerto ${PORT}:`, error.message);

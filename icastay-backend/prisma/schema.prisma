@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,21 +7,52 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Roles definidos en nuestro PROJECT_BLUEPRINT.md (RF-01)
 enum Role {
   GUEST
   HOTEL_PARTNER
   ADMIN
 }
 
-// Tabla de Usuarios en PostgreSQL
+// Zonas estratégicas de la región de Ica
+enum Zone {
+  HUACACHINA
+  PARACAS
+  ICA_CENTRO
+  VINEDOS
+  NAZCA
+}
+
 model User {
   id               Int      @id @default(autoincrement())
   name             String
   email            String   @unique
   passwordHash     String
   role             Role     @default(GUEST)
-  travelPreference String?  // Opcional: guarda la respuesta del Onboarding (Pareja, Negocios, Familia, Aventura)
+  travelPreference String?  // PAREJA, AVENTURA, FAMILIA, NEGOCIOS
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  // Relación: Un usuario Partner puede administrar uno o más hoteles
+  hotels           Hotel[]
+}
+
+model Hotel {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String
+  zone          Zone
+  pricePerNight Float
+  imageUrl      String
+  categoryTag   String   // PAREJA, AVENTURA, FAMILIA, NEGOCIOS (Conecta con el Onboarding del usuario)
+  
+  // Modelo Híbrido (RN-02)
+  isPartner     Boolean  @default(false) // true = Sello de Garantía IcaStay | false = Solo Directorio
+  externalUrl   String?  // URL externa si NO es Partner
+  
+  // Relación opcional con el dueño del hotel (si es Partner)
+  ownerId       Int?
+  owner         User?    @relation(fields: [ownerId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
