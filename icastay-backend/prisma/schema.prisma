@@ -13,7 +13,6 @@ enum Role {
   ADMIN
 }
 
-// Zonas estratégicas de la región de Ica
 enum Zone {
   HUACACHINA
   PARACAS
@@ -22,37 +21,63 @@ enum Zone {
   NAZCA
 }
 
-model User {
-  id               Int      @id @default(autoincrement())
-  name             String
-  email            String   @unique
-  passwordHash     String
-  role             Role     @default(GUEST)
-  travelPreference String?  // PAREJA, AVENTURA, FAMILIA, NEGOCIOS
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
 
-  // Relación: Un usuario Partner puede administrar uno o más hoteles
+model User {
+  id               Int       @id @default(autoincrement())
+  name             String
+  email            String    @unique
+  passwordHash     String
+  role             Role      @default(GUEST)
+  travelPreference String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
   hotels           Hotel[]
+  bookings         Booking[]
 }
 
 model Hotel {
-  id            Int      @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   name          String
   description   String
   zone          Zone
   pricePerNight Float
   imageUrl      String
-  categoryTag   String   // PAREJA, AVENTURA, FAMILIA, NEGOCIOS (Conecta con el Onboarding del usuario)
-  
-  // Modelo Híbrido (RN-02)
-  isPartner     Boolean  @default(false) // true = Sello de Garantía IcaStay | false = Solo Directorio
-  externalUrl   String?  // URL externa si NO es Partner
-  
-  // Relación opcional con el dueño del hotel (si es Partner)
-  ownerId       Int?
-  owner         User?    @relation(fields: [ownerId], references: [id])
+  categoryTag   String
+  isPartner     Boolean   @default(false)
+  externalUrl   String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  ownerId       Int?
+  owner         User?     @relation(fields: [ownerId], references: [id])
+
+  bookings      Booking[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  checkIn     DateTime
+  checkOut    DateTime
+  guestsCount Int           @default(2)
+  nights      Int
+  totalPrice  Float
+  status      BookingStatus @default(PENDING)
+  notes       String?
+
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+
+  hotelId     Int
+  hotel       Hotel         @relation(fields: [hotelId], references: [id])
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
