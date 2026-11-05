@@ -19,7 +19,8 @@ async function main() {
     },
   });
 
-  // 2. Limpiamos hoteles previos para no duplicar si corremos el seed dos veces
+// 2. Limpiamos reservas y hoteles previos para no duplicar si corremos el seed dos veces
+  await prisma.booking.deleteMany();
   await prisma.hotel.deleteMany();
 
   // 3. Insertamos el catálogo híbrido (Partners Verificados + Directorio)
