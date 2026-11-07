@@ -16,3 +16,58 @@ export const fetchHotels = async (filtros = {}) => {
   if (!res.ok) throw new Error(data.error || "Error al cargar hoteles");
   return data;
 };
+
+// Obtener los hoteles propios del Partner autenticado (RF-06)
+export const fetchMyPartnerHotels = async (token) => {
+  const res = await fetch(`${API_URL}/my-hotels`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al cargar tus alojamientos");
+  return data;
+};
+
+// Crear nuevo hotel Partner (RF-06)
+export const createHotel = async (hotelData, token) => {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(hotelData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al registrar alojamiento");
+  return data;
+};
+
+// Editar hotel existente del Partner (RF-06)
+export const updateHotel = async (hotelId, hotelData, token) => {
+  const res = await fetch(`${API_URL}/${hotelId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(hotelData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al actualizar alojamiento");
+  return data;
+};
+
+// Pausar o activar disponibilidad en tiempo real (RN-05)
+export const changeHotelAvailability = async (hotelId, isAvailable, token) => {
+  const res = await fetch(`${API_URL}/${hotelId}/availability`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ isAvailable }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al cambiar disponibilidad");
+  return data;
+};

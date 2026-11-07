@@ -10,7 +10,9 @@ const createBooking = async (req, res) => {
     if (!hotelId || !checkIn || !checkOut) {
       return res.status(400).json({ error: 'Hotel, fecha de ingreso y fecha de salida son obligatorios.' });
     }
-
+    if (!hotel.isAvailable) {
+      return res.status(400).json({ error: 'Este hotel ha pausado temporalmente la recepción de nuevas reservas.' });
+    }
     const fechaInicio = new Date(checkIn);
     const fechaFin = new Date(checkOut);
 

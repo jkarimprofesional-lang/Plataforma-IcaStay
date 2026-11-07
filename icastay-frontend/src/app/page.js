@@ -2,7 +2,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { registerUser, loginUser, saveTravelPreference } from "@/services/authService";
-import { fetchHotels } from "@/services/hotelService";
+import {
+  fetchHotels,
+  fetchMyPartnerHotels,
+  createHotel,
+  updateHotel,
+  changeHotelAvailability,
+} from "@/services/hotelService";
 import {
   createBookingRequest,
   fetchMyBookings,
@@ -19,10 +25,19 @@ const OPCIONES_ONBOARDING = [
   { id: "NEGOCIOS", titulo: "💼 Trabajo / Negocios", desc: "Wi-Fi rápido, céntrico y tranquilo" },
 ];
 
+const HOTEL_FORM_INICIAL = {
+  name: "",
+  description: "",
+  zone: "HUACACHINA",
+  pricePerNight: "",
+  imageUrl: "",
+  categoryTag: "AVENTURA",
+};
+
 export default function HomePage() {
   const { user, token, iniciarSesion, actualizarUsuario, cerrarSesion } = useAuth();
 
-  // Navegación principal: "CATALOGO" | "MIS_VIAJES" | "PANEL_PARTNER"
+  // Navegación principal: "CATALOGO" | "MIS_VIAJES" | "PANEL_PARTNER" | "MIS_HOTELES"
   const [vistaActiva, setVistaActiva] = useState("CATALOGO");
 
   // Estados de Autenticación
@@ -33,7 +48,7 @@ export default function HomePage() {
   const [cargando, setCargando] = useState(false);
   const [omitirOnboarding, setOmitirOnboarding] = useState(false);
 
-  // Estados del Catálogo y Filtros (Fase 3)
+  // Estados del Catálogo y Filtros
   const [hoteles, setHoteles] = useState([]);
   const [cargandoHoteles, setCargandoHoteles] = useState(true);
   const [filtros, setFiltros] = useState({
@@ -43,7 +58,7 @@ export default function HomePage() {
     onlyPartners: false,
   });
 
-  // Estados de Reserva y Trazabilidad (Fase 4)
+  // Estados de Reserva y Trazabilidad
   const [hotelSeleccionado, setHotelSeleccionado] = useState(null);
   const [reservaForm, setReservaForm] = useState({
     checkIn: "",
@@ -58,7 +73,15 @@ export default function HomePage() {
   const [reservasPartner, setReservasPartner] = useState([]);
   const [cargandoReservas, setCargandoReservas] = useState(false);
 
-  // Cargar catálogo de hoteles
+  // Estados de Autogestión de Hoteles Partner (Fase 6 - v2.0)
+  const [misHotelesPartner, setMisHotelesPartner] = useState([]);
+  const [mostrarModalHotel, setMostrarModalHotel] = useState(false);
+  const [hotelEditandoId, setHotelEditandoId] = useState(null);
+  const [hotelForm, setHotelForm] = useState(HOTEL_FORM_INICIAL);
+  const [guardandoHotel, setGuardandoHotel] = useState(false);
+  const [errorHotelForm, setErrorHotelForm] = useState("");
+
+  // Cargar catálogo público
   useEffect(() => {
     let activo = true;
     const cargarCatalogo = async () => {
@@ -77,12 +100,12 @@ export default function HomePage() {
     };
   }, [filtros]);
 
-  // Cargar reservas según la pestaña activa
+  // Cargar datos según la pestaña activa
   useEffect(() => {
     if (!token || !user) return;
     let activo = true;
 
-    const cargarDatosReservas = async () => {
+    const cargarDatosVista = async () => {
       setCargandoReservas(true);
       try {
         if (vistaActiva === "MIS_VIAJES" && user.role === "GUEST") {
@@ -91,6 +114,9 @@ export default function HomePage() {
         } else if (vistaActiva === "PANEL_PARTNER" && user.role === "HOTEL_PARTNER") {
           const data = await fetchPartnerBookings(token);
           if (activo) setReservasPartner(data);
+        } else if (vistaActiva === "MIS_HOTELES" && user.role === "HOTEL_PARTNER") {
+          const data = await fetchMyPartnerHotels(token);
+          if (activo) setMisHotelesPartner(data);
         }
       } catch (err) {
         console.error(err);
@@ -99,11 +125,16 @@ export default function HomePage() {
       }
     };
 
-    cargarDatosReservas();
+    cargarDatosVista();
     return () => {
       activo = false;
     };
   }, [vistaActiva, token, user]);
+
+  const recargarCatalogoPublico = async () => {
+    const data = await fetchHotels(filtros);
+    setHoteles(data);
+  };
 
   const handleSubmitAuth = async (e) => {
     e.preventDefault();
@@ -115,7 +146,6 @@ export default function HomePage() {
         : await loginUser({ email: formData.email, password: formData.password });
       iniciarSesion(respuesta.user, respuesta.token);
       setMostrarModalAuth(false);
-      // Si inicia sesión un Hotel Partner, lo llevamos directo a su panel de recepción
       if (respuesta.user.role === "HOTEL_PARTNER") {
         setVistaActiva("PANEL_PARTNER");
       }
@@ -148,7 +178,6 @@ export default function HomePage() {
     setHotelSeleccionado(hotel);
   };
 
-  // Cálculo preliminar de noches para mostrar en el modal
   const calcularNochesPreliminar = () => {
     if (!reservaForm.checkIn || !reservaForm.checkOut) return 0;
     const inicio = new Date(reservaForm.checkIn);
@@ -193,7 +222,60 @@ export default function HomePage() {
     }
   };
 
-  // Onboarding Profiling para nuevos huéspedes
+  // Funciones de Autogestión de Hoteles Partner (Fase 6)
+  const abrirModalCrearHotel = () => {
+    setHotelEditandoId(null);
+    setHotelForm(HOTEL_FORM_INICIAL);
+    setErrorHotelForm("");
+    setMostrarModalHotel(true);
+  };
+
+  const abrirModalEditarHotel = (hotel) => {
+    setHotelEditandoId(hotel.id);
+    setHotelForm({
+      name: hotel.name,
+      description: hotel.description,
+      zone: hotel.zone,
+      pricePerNight: hotel.pricePerNight,
+      imageUrl: hotel.imageUrl,
+      categoryTag: hotel.categoryTag,
+    });
+    setErrorHotelForm("");
+    setMostrarModalHotel(true);
+  };
+
+  const handleGuardarHotelPartner = async (e) => {
+    e.preventDefault();
+    setErrorHotelForm("");
+    setGuardandoHotel(true);
+    try {
+      if (hotelEditandoId) {
+        await updateHotel(hotelEditandoId, hotelForm, token);
+      } else {
+        await createHotel(hotelForm, token);
+      }
+      const actualizados = await fetchMyPartnerHotels(token);
+      setMisHotelesPartner(actualizados);
+      await recargarCatalogoPublico();
+      setMostrarModalHotel(false);
+    } catch (err) {
+      setErrorHotelForm(err.message);
+    } finally {
+      setGuardandoHotel(false);
+    }
+  };
+
+  const handleAlternarDisponibilidad = async (hotel) => {
+    try {
+      await changeHotelAvailability(hotel.id, !hotel.isAvailable, token);
+      const actualizados = await fetchMyPartnerHotels(token);
+      setMisHotelesPartner(actualizados);
+      await recargarCatalogoPublico();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   if (user && user.role === "GUEST" && !user.travelPreference && !omitirOnboarding) {
     return (
       <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6">
@@ -242,8 +324,7 @@ export default function HomePage() {
               <p className="text-xs text-slate-400">Trazabilidad y Garantía en Ica</p>
             </button>
 
-            {/* Pestañas de navegación */}
-            <nav className="flex items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
+            <nav className="flex flex-wrap items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
               <button
                 onClick={() => setVistaActiva("CATALOGO")}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-md transition ${
@@ -269,16 +350,28 @@ export default function HomePage() {
               )}
 
               {user?.role === "HOTEL_PARTNER" && (
-                <button
-                  onClick={() => setVistaActiva("PANEL_PARTNER")}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-md transition ${
-                    vistaActiva === "PANEL_PARTNER"
-                      ? "bg-emerald-500 text-slate-950"
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  🛎️ Recepción Partner
-                </button>
+                <>
+                  <button
+                    onClick={() => setVistaActiva("PANEL_PARTNER")}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition ${
+                      vistaActiva === "PANEL_PARTNER"
+                        ? "bg-emerald-500 text-slate-950"
+                        : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    🛎️ Recepción Partner
+                  </button>
+                  <button
+                    onClick={() => setVistaActiva("MIS_HOTELES")}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition ${
+                      vistaActiva === "MIS_HOTELES"
+                        ? "bg-amber-500 text-slate-950"
+                        : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    🏨 Mis Alojamientos
+                  </button>
+                </>
               )}
             </nav>
           </div>
@@ -469,10 +562,8 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* Componente de Barra de Trazabilidad */}
                     <BookingStatusStepper status={reserva.status} />
 
-                    {/* Regla de Negocio RN-04: Cancelar solo si está en PENDING */}
                     {reserva.status === "PENDING" && (
                       <div className="mt-4 flex justify-end">
                         <button
@@ -576,9 +667,233 @@ export default function HomePage() {
             )}
           </section>
         )}
+
+        {/* VISTA D: AUTOGESTIÓN DE ALOJAMIENTOS PARTNER (FASE 6 - v2.0) */}
+        {vistaActiva === "MIS_HOTELES" && (
+          <section className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <span className="text-xs uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-semibold">
+                  Autogestión de Catálogo (v2.0)
+                </span>
+                <h2 className="text-2xl font-bold text-white mt-2">
+                  Mis Alojamientos Verificados
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Registra nuevos establecimientos, actualiza tarifas o pausa la recepción de cupos en tiempo real.
+                </p>
+              </div>
+              <button
+                onClick={abrirModalCrearHotel}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition shadow-lg"
+              >
+                + Registrar Nuevo Alojamiento
+              </button>
+            </div>
+
+            {cargandoReservas ? (
+              <p className="text-slate-400 py-8 text-center">Cargando tus alojamientos...</p>
+            ) : misHotelesPartner.length === 0 ? (
+              <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-10 text-center">
+                <p className="text-slate-300 mb-4">
+                  Aún no tienes alojamientos registrados bajo tu cuenta de socio hotelero.
+                </p>
+                <button
+                  onClick={abrirModalCrearHotel}
+                  className="bg-amber-500 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-lg"
+                >
+                  Registrar mi primer hotel en Ica
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {misHotelesPartner.map((hotel) => (
+                  <div
+                    key={hotel.id}
+                    className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col justify-between gap-4"
+                  >
+                    <div className="flex gap-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={hotel.imageUrl}
+                        alt={hotel.name}
+                        className="w-28 h-28 object-cover rounded-lg bg-slate-900 shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold text-amber-400">{hotel.zone}</span>
+                          <span className="text-xs bg-slate-900 px-2 py-0.5 rounded text-slate-300">
+                            {hotel.categoryTag}
+                          </span>
+                          <span
+                            className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                              hotel.isAvailable
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : "bg-red-500/20 text-red-300"
+                            }`}
+                          >
+                            {hotel.isAvailable ? "● Disponible" : "⏸ Pausado"}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-white">{hotel.name}</h3>
+                        <p className="text-xs text-slate-400 line-clamp-2">{hotel.description}</p>
+                        <p className="text-sm font-bold text-amber-400 pt-1">
+                          S/ {hotel.pricePerNight} / noche
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-700 pt-3">
+                      <button
+                        onClick={() => abrirModalEditarHotel(hotel)}
+                        className="text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold px-3.5 py-2 rounded-lg transition"
+                      >
+                        ✏️ Editar Datos / Tarifa
+                      </button>
+
+                      <button
+                        onClick={() => handleAlternarDisponibilidad(hotel)}
+                        className={`text-xs font-bold px-3.5 py-2 rounded-lg transition ${
+                          hotel.isAvailable
+                            ? "bg-red-950/60 hover:bg-red-900 text-red-200 border border-red-700/50"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
+                        }`}
+                      >
+                        {hotel.isAvailable ? "⏸ Pausar Cupos" : "▶ Activar Cupos"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
-      {/* MODAL PARA SOLICITAR RESERVA EN HOTEL PARTNER (FASE 4) */}
+      {/* MODAL PARA CREAR / EDITAR ALOJAMIENTO PARTNER (FASE 6) */}
+      {mostrarModalHotel && (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-lg w-full relative shadow-2xl">
+            <button
+              onClick={() => setMostrarModalHotel(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-xl font-bold text-amber-400 mb-1">
+              {hotelEditandoId ? "Editar Alojamiento Verificado" : "Registrar Nuevo Alojamiento en Ica"}
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Este establecimiento contará con el Sello de Garantía IcaStay y reservas con trazabilidad.
+            </p>
+
+            {errorHotelForm && (
+              <div className="bg-red-900/40 border border-red-500 text-red-200 text-xs p-3 rounded-lg mb-4">
+                ❌ {errorHotelForm}
+              </div>
+            )}
+
+            <form onSubmit={handleGuardarHotelPartner} className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-300 mb-1">Nombre del Hotel / Resort</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Las Dunas Sun Resort"
+                  value={hotelForm.name}
+                  onChange={(e) => setHotelForm({ ...hotelForm, name: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Zona en Ica</label>
+                  <select
+                    value={hotelForm.zone}
+                    onChange={(e) => setHotelForm({ ...hotelForm, zone: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="HUACACHINA">Oasis de Huacachina</option>
+                    <option value="PARACAS">Bahía de Paracas</option>
+                    <option value="VINEDOS">Ruta de Viñedos</option>
+                    <option value="ICA_CENTRO">Ica Centro</option>
+                    <option value="NAZCA">Nazca</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Categoría (Onboarding)</label>
+                  <select
+                    value={hotelForm.categoryTag}
+                    onChange={(e) => setHotelForm({ ...hotelForm, categoryTag: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="AVENTURA">Aventura</option>
+                    <option value="PAREJA">Pareja / Romántico</option>
+                    <option value="FAMILIA">Familia</option>
+                    <option value="NEGOCIOS">Negocios</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Precio por noche (S/)</label>
+                  <input
+                    type="number"
+                    min="50"
+                    required
+                    placeholder="Ej. 280"
+                    value={hotelForm.pricePerNight}
+                    onChange={(e) => setHotelForm({ ...hotelForm, pricePerNight: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">URL de Fotografía</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://images.unsplash.com/..."
+                    value={hotelForm.imageUrl}
+                    onChange={(e) => setHotelForm({ ...hotelForm, imageUrl: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 mb-1">Descripción de la experiencia</label>
+                <textarea
+                  rows="3"
+                  required
+                  placeholder="Describe los servicios, ubicación y beneficios incluidos..."
+                  value={hotelForm.description}
+                  onChange={(e) => setHotelForm({ ...hotelForm, description: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={guardandoHotel}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition mt-2"
+              >
+                {guardandoHotel
+                  ? "Guardando..."
+                  : hotelEditandoId
+                  ? "Guardar Cambios"
+                  : "Publicar Alojamiento con Sello IcaStay"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA SOLICITAR RESERVA EN HOTEL PARTNER */}
       {hotelSeleccionado && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative shadow-2xl">

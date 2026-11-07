@@ -28,6 +28,18 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum PaymentMethod {
+  YAPE
+  PLIN
+  CARD
+  TRANSFER
+}
+
 model User {
   id               Int       @id @default(autoincrement())
   name             String
@@ -40,6 +52,7 @@ model User {
 
   hotels           Hotel[]
   bookings         Booking[]
+  reviews          Review[]
 }
 
 model Hotel {
@@ -51,33 +64,61 @@ model Hotel {
   imageUrl      String
   categoryTag   String
   isPartner     Boolean   @default(false)
+  isAvailable   Boolean   @default(true) // RN-05: Control de cupos en tiempo real por el Partner
   externalUrl   String?
 
   ownerId       Int?
   owner         User?     @relation(fields: [ownerId], references: [id])
 
   bookings      Booking[]
+  reviews       Review[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
 model Booking {
-  id          Int           @id @default(autoincrement())
-  checkIn     DateTime
-  checkOut    DateTime
-  guestsCount Int           @default(2)
-  nights      Int
-  totalPrice  Float
-  status      BookingStatus @default(PENDING)
-  notes       String?
+  id               Int            @id @default(autoincrement())
+  checkIn          DateTime
+  checkOut         DateTime
+  guestsCount      Int            @default(2)
+  nights           Int
+  totalPrice       Float
+  status           BookingStatus  @default(PENDING)
+  notes            String?
 
-  userId      Int
-  user        User          @relation(fields: [userId], references: [id])
+  // Trazabilidad Financiera v2.0 (RF-07 / RN-06)
+  paymentStatus    PaymentStatus  @default(UNPAID)
+  paymentMethod    PaymentMethod?
+  paymentReference String?
+  voucherCode      String?        @unique
+  paidAt           DateTime?
 
-  hotelId     Int
-  hotel       Hotel         @relation(fields: [hotelId], references: [id])
+  userId           Int
+  user             User           @relation(fields: [userId], references: [id])
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  hotelId          Int
+  hotel            Hotel          @relation(fields: [hotelId], references: [id])
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model Review {
+  id             Int       @id @default(autoincrement())
+  rating         Int       // 1 a 5 estrellas
+  comment        String
+  isVerifiedStay Boolean   @default(false) // RN-07: Verificado automáticamente por el Backend
+  isFeatured     Boolean   @default(false) // Destacada por el Hotel Partner
+  partnerReply   String?   // Respuesta oficial del Hotel Partner
+  repliedAt      DateTime?
+
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id])
+
+  hotelId        Int
+  hotel          Hotel     @relation(fields: [hotelId], references: [id])
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

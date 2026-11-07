@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-
 const NOMBRES_ZONA = {
   HUACACHINA: "🏜️ Oasis de Huacachina",
   PARACAS: "🌊 Bahía de Paracas",
@@ -12,27 +10,28 @@ const NOMBRES_ZONA = {
 
 export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel }) {
   const coincideConPerfil = userPreference && hotel.categoryTag === userPreference;
+  const disponible = hotel.isAvailable !== false;
 
   return (
     <div
       className={`rounded-xl overflow-hidden border transition flex flex-col justify-between bg-slate-800 ${
         hotel.isPartner
-          ? "border-amber-500/50 shadow-lg shadow-amber-500/5"
+          ? disponible
+            ? "border-amber-500/50 shadow-lg shadow-amber-500/5"
+            : "border-slate-700 opacity-75"
           : "border-slate-700 opacity-90"
       }`}
     >
       <div>
         {/* Imagen y Etiquetas Superiores */}
         <div className="relative h-48 w-full bg-slate-900">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={hotel.imageUrl}
             alt={hotel.name}
-            fill
-            sizes="(max-width: 768px) 100vw, 33vw"
-            unoptimized
-            className="object-cover"
+            loading="lazy"
+            className="h-full w-full object-cover"
           />
-          
           <div className="absolute top-3 left-3 flex flex-wrap gap-2">
             {hotel.isPartner ? (
               <span className="bg-emerald-500 text-slate-950 text-xs font-bold px-2.5 py-1 rounded-full shadow">
@@ -44,12 +43,25 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
               </span>
             )}
 
-            {coincideConPerfil && (
+            {hotel.isPartner && !disponible && (
+              <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
+                ⏸️ Sin cupos temporalmente
+              </span>
+            )}
+
+            {coincideConPerfil && disponible && (
               <span className="bg-amber-400 text-slate-950 text-xs font-bold px-2.5 py-1 rounded-full shadow">
                 🔥 Ideal para tu perfil ({userPreference})
               </span>
             )}
           </div>
+
+          {/* Indicador de Calificación (Fase 8 / v2.0) */}
+          {hotel.avgRating && (
+            <div className="absolute bottom-3 right-3 bg-slate-950/90 border border-amber-500/40 text-amber-300 text-xs font-bold px-2.5 py-1 rounded-lg">
+              ★ {hotel.avgRating} ({hotel.totalReviews})
+            </div>
+          )}
         </div>
 
         {/* Contenido de la ficha */}
@@ -68,7 +80,7 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
         </div>
       </div>
 
-      {/* Pie de tarjeta: Precio y Acción condicional (RN-02) */}
+      {/* Pie de tarjeta: Precio y Acción condicional (RN-02 y RN-05) */}
       <div className="p-5 pt-0 border-t border-slate-700/60 mt-2 flex items-center justify-between">
         <div>
           <span className="text-xs text-slate-400 block">Precio por noche</span>
@@ -78,12 +90,21 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
         </div>
 
         {hotel.isPartner ? (
-          <button
-            onClick={() => onSelectPartnerHotel(hotel)}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition"
-          >
-            Solicitar Reserva
-          </button>
+          disponible ? (
+            <button
+              onClick={() => onSelectPartnerHotel(hotel)}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition"
+            >
+              Solicitar Reserva
+            </button>
+          ) : (
+            <button
+              disabled
+              className="bg-slate-700 text-slate-400 font-semibold text-xs px-4 py-2.5 rounded-lg cursor-not-allowed"
+            >
+              Cupos Pausados
+            </button>
+          )
         ) : (
           <a
             href={hotel.externalUrl}

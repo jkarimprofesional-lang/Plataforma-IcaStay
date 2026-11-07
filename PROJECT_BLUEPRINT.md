@@ -76,3 +76,14 @@ Arquitectura **Cliente-Servidor Desacoplada** comunicada mediante una **API REST
                                                                        |
                                                                        v
                                                         [Base de Datos PostgreSQL (Docker)]
+
+
+
+---
+
+## 21. Especificación de Evolución — IcaStay Versión 2.0
+
+### Alcance de la Versión 2.0
+1. **Autogestión de Hoteles Partner (RF-06 / RN-05):** Creación, edición y control de disponibilidad inmediata (`isAvailable`) de alojamientos por parte de usuarios `HOTEL_PARTNER`.
+2. **Flujo Transaccional y Comprobante Oficial (RF-07 / RN-06):** Registro de pago (`UNPAID` ➔ `PAID`) mediante métodos locales (`YAPE`, `PLIN`, `CARD`, `TRANSFER`), generación de código único (`voucherCode`) y emisión de comprobante compartido entre Huésped y Recepción.
+3. **Motor de Reputación y Reseñas Verificadas (RF-08 / RN-07):** Calificación de 1 a 5 estrellas con asignación automática en servidor de la insignia `isVerifiedStay` (si existe reserva `CONFIRMED` + `PAID`), filtros por puntuación/sentimiento, fijado comercial (`isFeatured`) y réplica oficial del hotel (`partnerReply`).
