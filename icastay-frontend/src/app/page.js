@@ -19,6 +19,7 @@ import {
 import HotelCard from "@/components/HotelCard";
 import BookingStatusStepper from "@/components/BookingStatusStepper";
 import VoucherModal from "@/components/VoucherModal";
+import ReviewsModal from "@/components/ReviewsModal";
 
 const OPCIONES_ONBOARDING = [
   { id: "PAREJA", titulo: "💑 Escapada en Pareja", desc: "Viñedos, cenas privadas y relax" },
@@ -28,7 +29,12 @@ const OPCIONES_ONBOARDING = [
 ];
 
 const HOTEL_FORM_INICIAL = {
-  name: "", description: "", zone: "HUACACHINA", pricePerNight: "", imageUrl: "", categoryTag: "AVENTURA",
+  name: "",
+  description: "",
+  zone: "HUACACHINA",
+  pricePerNight: "",
+  imageUrl: "",
+  categoryTag: "AVENTURA",
 };
 
 export default function HomePage() {
@@ -49,16 +55,23 @@ export default function HomePage() {
   const [hoteles, setHoteles] = useState([]);
   const [cargandoHoteles, setCargandoHoteles] = useState(true);
   const [filtros, setFiltros] = useState({
-    zone: "TODAS", maxPrice: 600, categoryTag: "TODAS", onlyPartners: false,
+    zone: "TODAS",
+    maxPrice: 600,
+    categoryTag: "TODAS",
+    onlyPartners: false,
   });
 
   // Estados de Reserva y Trazabilidad
   const [hotelSeleccionado, setHotelSeleccionado] = useState(null);
   const [reservaForm, setReservaForm] = useState({
-    checkIn: "", checkOut: "", guestsCount: 2, notes: "",
+    checkIn: "",
+    checkOut: "",
+    guestsCount: 2,
+    notes: "",
   });
   const [errorReserva, setErrorReserva] = useState("");
   const [enviandoReserva, setEnviandoReserva] = useState(false);
+
   const [misReservas, setMisReservas] = useState([]);
   const [reservasPartner, setReservasPartner] = useState([]);
   const [cargandoReservas, setCargandoReservas] = useState(false);
@@ -78,6 +91,9 @@ export default function HomePage() {
   const [errorPago, setErrorPago] = useState("");
   const [voucherActivo, setVoucherActivo] = useState(null);
 
+  // Estado de Reseñas Verificadas y Gestión Comercial (Fase 8 - v2.0)
+  const [hotelResenasActivo, setHotelResenasActivo] = useState(null);
+
   // Cargar catálogo público
   useEffect(() => {
     let activo = true;
@@ -92,7 +108,9 @@ export default function HomePage() {
       }
     };
     cargarCatalogo();
-    return () => { activo = false; };
+    return () => {
+      activo = false;
+    };
   }, [filtros]);
 
   // Cargar datos según la pestaña activa
@@ -121,12 +139,18 @@ export default function HomePage() {
     };
 
     cargarDatosVista();
-    return () => { activo = false; };
+    return () => {
+      activo = false;
+    };
   }, [vistaActiva, token, user]);
 
   const recargarCatalogoPublico = async () => {
-    const data = await fetchHotels(filtros);
-    setHoteles(data);
+    try {
+      const data = await fetchHotels(filtros);
+      setHoteles(data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSubmitAuth = async (e) => {
@@ -185,7 +209,10 @@ export default function HomePage() {
     setEnviandoReserva(true);
     try {
       await createBookingRequest(
-        { hotelId: hotelSeleccionado.id, ...reservaForm },
+        {
+          hotelId: hotelSeleccionado.id,
+          ...reservaForm,
+        },
         token
       );
       setHotelSeleccionado(null);
@@ -212,7 +239,7 @@ export default function HomePage() {
     }
   };
 
-  // Función para procesar el pago y emitir Voucher
+  // Procesar Pago y Emitir Voucher (Fase 7)
   const handleProcesarPago = async (e) => {
     e.preventDefault();
     setErrorPago("");
@@ -222,7 +249,7 @@ export default function HomePage() {
       const actualizadas = await fetchMyBookings(token);
       setMisReservas(actualizadas);
       setReservaPorPagar(null);
-      setVoucherActivo(res.booking); // Muestra inmediatamente el Voucher Oficial
+      setVoucherActivo(res.booking);
     } catch (err) {
       setErrorPago(err.message);
     } finally {
@@ -241,8 +268,12 @@ export default function HomePage() {
   const abrirModalEditarHotel = (hotel) => {
     setHotelEditandoId(hotel.id);
     setHotelForm({
-      name: hotel.name, description: hotel.description, zone: hotel.zone,
-      pricePerNight: hotel.pricePerNight, imageUrl: hotel.imageUrl, categoryTag: hotel.categoryTag,
+      name: hotel.name,
+      description: hotel.description,
+      zone: hotel.zone,
+      pricePerNight: hotel.pricePerNight,
+      imageUrl: hotel.imageUrl,
+      categoryTag: hotel.categoryTag,
     });
     setErrorHotelForm("");
     setMostrarModalHotel(true);
@@ -432,6 +463,7 @@ export default function HomePage() {
                     <option value="NAZCA">🛩️ Nazca</option>
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-xs text-slate-400 mb-1">Estilo de Viaje</label>
                   <select
@@ -446,6 +478,7 @@ export default function HomePage() {
                     <option value="NEGOCIOS">💼 Negocios</option>
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-xs text-slate-400 mb-1">
                     Precio máx. por noche:{" "}
@@ -461,6 +494,7 @@ export default function HomePage() {
                     className="w-full accent-amber-400 cursor-pointer"
                   />
                 </div>
+
                 <div className="flex items-center h-full pt-4">
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-200">
                     <input
@@ -476,7 +510,9 @@ export default function HomePage() {
             </section>
 
             {cargandoHoteles ? (
-              <p className="text-center text-slate-400 py-12 animate-pulse">Buscando alojamientos en Ica...</p>
+              <p className="text-center text-slate-400 py-12 animate-pulse">
+                Buscando alojamientos en Ica...
+              </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {hoteles.map((hotel) => (
@@ -485,6 +521,7 @@ export default function HomePage() {
                     hotel={hotel}
                     userPreference={user?.travelPreference}
                     onSelectPartnerHotel={handleIntentarReservar}
+                    onOpenReviews={(h) => setHotelResenasActivo(h)}
                   />
                 ))}
               </div>
@@ -499,7 +536,7 @@ export default function HomePage() {
               <div>
                 <h2 className="text-2xl font-bold text-white">Mis Solicitudes de Reserva</h2>
                 <p className="text-sm text-slate-400">
-                  Sigue en tiempo real la confirmación de tus alojamientos verificados en Ica
+                  Sigue en tiempo real la confirmación, el pago y el comprobante oficial de tus estadías en Ica
                 </p>
               </div>
               <button
@@ -514,7 +551,9 @@ export default function HomePage() {
               <p className="text-slate-400 py-8 text-center">Cargando tus reservas...</p>
             ) : misReservas.length === 0 ? (
               <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-10 text-center">
-                <p className="text-slate-300 mb-4">Aún no has enviado solicitudes de reserva a nuestros Hoteles Partner.</p>
+                <p className="text-slate-300 mb-4">
+                  Aún no has enviado solicitudes de reserva a nuestros Hoteles Partner.
+                </p>
                 <button
                   onClick={() => setVistaActiva("CATALOGO")}
                   className="bg-amber-500 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-lg"
@@ -525,24 +564,37 @@ export default function HomePage() {
             ) : (
               <div className="space-y-5">
                 {misReservas.map((reserva) => (
-                  <div key={reserva.id} className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+                  <div
+                    key={reserva.id}
+                    className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <span className="text-xs text-emerald-400 font-semibold">Reserva #{reserva.id} • {reserva.hotel?.zone}</span>
-                        <h3 className="text-xl font-bold text-white mt-0.5">{reserva.hotel?.name}</h3>
+                        <span className="text-xs text-emerald-400 font-semibold">
+                          Reserva #{reserva.id} • {reserva.hotel?.zone}
+                        </span>
+                        <h3 className="text-xl font-bold text-white mt-0.5">
+                          {reserva.hotel?.name}
+                        </h3>
                         <p className="text-xs text-slate-300 mt-1">
-                          📅 Ingreso: <strong>{new Date(reserva.checkIn).toLocaleDateString()}</strong> ➔
+                          📅 Ingreso:{" "}
+                          <strong>{new Date(reserva.checkIn).toLocaleDateString()}</strong> ➔
                           Salida: <strong>{new Date(reserva.checkOut).toLocaleDateString()}</strong>{" "}
                           ({reserva.nights} {reserva.nights === 1 ? "noche" : "noches"} •{" "}
                           {reserva.guestsCount} huéspedes)
                         </p>
                         {reserva.notes && (
-                          <p className="text-xs text-slate-400 mt-1 italic">Nota enviada: &quot;{reserva.notes}&quot;</p>
+                          <p className="text-xs text-slate-400 mt-1 italic">
+                            Nota enviada: &quot;{reserva.notes}&quot;
+                          </p>
                         )}
                       </div>
+
                       <div className="text-right">
                         <span className="text-xs text-slate-400 block">Total estimado</span>
-                        <span className="text-2xl font-bold text-amber-400">S/ {reserva.totalPrice}</span>
+                        <span className="text-2xl font-bold text-amber-400">
+                          S/ {reserva.totalPrice}
+                        </span>
                       </div>
                     </div>
 
@@ -550,7 +602,7 @@ export default function HomePage() {
                       status={reserva.status}
                       paymentStatus={reserva.paymentStatus}
                     />
-                    
+
                     <div className="mt-4 flex flex-wrap justify-end gap-3">
                       {reserva.status === "PENDING" && (
                         <button
@@ -598,9 +650,11 @@ export default function HomePage() {
                 <span className="text-xs uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-semibold">
                   Gestión Hotelera
                 </span>
-                <h2 className="text-2xl font-bold text-white mt-2">Bandeja de Solicitudes Recibidas</h2>
+                <h2 className="text-2xl font-bold text-white mt-2">
+                  Bandeja de Solicitudes Recibidas
+                </h2>
                 <p className="text-sm text-slate-400">
-                  Confirma o rechaza las solicitudes de los viajeros para actualizar su barra de trazabilidad.
+                  Confirma o rechaza solicitudes y verifica los comprobantes de pago oficiales de tus huéspedes.
                 </p>
               </div>
             </div>
@@ -614,15 +668,26 @@ export default function HomePage() {
             ) : (
               <div className="space-y-4">
                 {reservasPartner.map((reserva) => (
-                  <div key={reserva.id} className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+                  <div
+                    key={reserva.id}
+                    className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4"
+                  >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold bg-slate-900 px-2.5 py-1 rounded text-amber-400">#{reserva.id}</span>
+                        <span className="text-xs font-bold bg-slate-900 px-2.5 py-1 rounded text-amber-400">
+                          #{reserva.id}
+                        </span>
                         <h3 className="font-bold text-lg text-white">{reserva.hotel?.name}</h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-200">
+                          Estado actual: {reserva.status}
+                        </span>
                       </div>
                       <p className="text-sm text-slate-300">
                         👤 Huésped: <strong>{reserva.user?.name}</strong> ({reserva.user?.email}) •
-                        Perfil: <span className="text-amber-300">{reserva.user?.travelPreference || "No especificado"}</span>
+                        Perfil:{" "}
+                        <span className="text-amber-300">
+                          {reserva.user?.travelPreference || "No especificado"}
+                        </span>
                       </p>
                       <p className="text-xs text-slate-400">
                         📅 Del {new Date(reserva.checkIn).toLocaleDateString()} al{" "}
@@ -636,7 +701,7 @@ export default function HomePage() {
                         </p>
                       )}
                     </div>
-                    
+
                     {reserva.status === "PENDING" ? (
                       <div className="flex items-center gap-3">
                         <button
@@ -656,7 +721,13 @@ export default function HomePage() {
                       <div className="flex flex-col items-end gap-2">
                         <span className="text-xs text-slate-300 font-semibold">
                           Estado: {reserva.status} •{" "}
-                          <strong className={reserva.paymentStatus === "PAID" ? "text-emerald-400" : "text-amber-300"}>
+                          <strong
+                            className={
+                              reserva.paymentStatus === "PAID"
+                                ? "text-emerald-400"
+                                : "text-amber-300"
+                            }
+                          >
                             {reserva.paymentStatus === "PAID" ? "PAGADO ✓" : "PAGO PENDIENTE"}
                           </strong>
                         </span>
@@ -677,16 +748,20 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* VISTA D: AUTOGESTIÓN DE ALOJAMIENTOS PARTNER (FASE 6 - v2.0) */}
+        {/* VISTA D: AUTOGESTIÓN DE ALOJAMIENTOS PARTNER (FASE 6 Y 8 - v2.0) */}
         {vistaActiva === "MIS_HOTELES" && (
           <section className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
                 <span className="text-xs uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-semibold">
-                  Autogestión de Catálogo (v2.0)
+                  Autogestión de Catálogo y Reputación (v2.0)
                 </span>
-                <h2 className="text-2xl font-bold text-white mt-2">Mis Alojamientos Verificados</h2>
-                <p className="text-sm text-slate-400">Registra nuevos establecimientos, actualiza tarifas o pausa la recepción de cupos en tiempo real.</p>
+                <h2 className="text-2xl font-bold text-white mt-2">
+                  Mis Alojamientos Verificados
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Registra establecimientos, actualiza tarifas, gestiona reseñas o pausa la recepción de cupos en tiempo real.
+                </p>
               </div>
               <button
                 onClick={abrirModalCrearHotel}
@@ -700,24 +775,41 @@ export default function HomePage() {
               <p className="text-slate-400 py-8 text-center">Cargando tus alojamientos...</p>
             ) : misHotelesPartner.length === 0 ? (
               <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-10 text-center">
-                <p className="text-slate-300 mb-4">Aún no tienes alojamientos registrados bajo tu cuenta de socio hotelero.</p>
-                <button onClick={abrirModalCrearHotel} className="bg-amber-500 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-lg">
+                <p className="text-slate-300 mb-4">
+                  Aún no tienes alojamientos registrados bajo tu cuenta de socio hotelero.
+                </p>
+                <button
+                  onClick={abrirModalCrearHotel}
+                  className="bg-amber-500 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-lg"
+                >
                   Registrar mi primer hotel en Ica
                 </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {misHotelesPartner.map((hotel) => (
-                  <div key={hotel.id} className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col justify-between gap-4">
+                  <div
+                    key={hotel.id}
+                    className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col justify-between gap-4"
+                  >
                     <div className="flex gap-4">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={hotel.imageUrl} alt={hotel.name} className="w-28 h-28 object-cover rounded-lg bg-slate-900 shrink-0" />
+                      <img
+                        src={hotel.imageUrl}
+                        alt={hotel.name}
+                        className="w-28 h-28 object-cover rounded-lg bg-slate-900 shrink-0"
+                      />
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-xs font-bold text-amber-400">{hotel.zone}</span>
-                          <span className="text-xs bg-slate-900 px-2 py-0.5 rounded text-slate-300">{hotel.categoryTag}</span>
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                              hotel.isAvailable ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
+                          <span className="text-xs bg-slate-900 px-2 py-0.5 rounded text-slate-300">
+                            {hotel.categoryTag}
+                          </span>
+                          <span
+                            className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                              hotel.isAvailable
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : "bg-red-500/20 text-red-300"
                             }`}
                           >
                             {hotel.isAvailable ? "● Disponible" : "⏸ Pausado"}
@@ -725,16 +817,28 @@ export default function HomePage() {
                         </div>
                         <h3 className="text-lg font-bold text-white">{hotel.name}</h3>
                         <p className="text-xs text-slate-400 line-clamp-2">{hotel.description}</p>
-                        <p className="text-sm font-bold text-amber-400 pt-1">S/ {hotel.pricePerNight} / noche</p>
+                        <p className="text-sm font-bold text-amber-400 pt-1">
+                          S/ {hotel.pricePerNight} / noche
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between border-t border-slate-700 pt-3">
-                      <button
-                        onClick={() => abrirModalEditarHotel(hotel)}
-                        className="text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold px-3.5 py-2 rounded-lg transition"
-                      >
-                        ✏️ Editar Datos / Tarifa
-                      </button>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 pt-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => abrirModalEditarHotel(hotel)}
+                          className="text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold px-3 py-2 rounded-lg transition"
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          onClick={() => setHotelResenasActivo(hotel)}
+                          className="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold px-3 py-2 rounded-lg transition"
+                        >
+                          ⭐ Gestionar Reseñas
+                        </button>
+                      </div>
+
                       <button
                         onClick={() => handleAlternarDisponibilidad(hotel)}
                         className={`text-xs font-bold px-3.5 py-2 rounded-lg transition ${
@@ -758,9 +862,19 @@ export default function HomePage() {
       {mostrarModalHotel && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-lg w-full relative shadow-2xl">
-            <button onClick={() => setMostrarModalHotel(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-            <h3 className="text-xl font-bold text-amber-400 mb-1">{hotelEditandoId ? "Editar Alojamiento Verificado" : "Registrar Nuevo Alojamiento en Ica"}</h3>
-            <p className="text-xs text-slate-400 mb-4">Este establecimiento contará con el Sello de Garantía IcaStay y reservas con trazabilidad.</p>
+            <button
+              onClick={() => setMostrarModalHotel(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-xl font-bold text-amber-400 mb-1">
+              {hotelEditandoId ? "Editar Alojamiento Verificado" : "Registrar Nuevo Alojamiento en Ica"}
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Este establecimiento contará con el Sello de Garantía IcaStay y reservas con trazabilidad.
+            </p>
 
             {errorHotelForm && (
               <div className="bg-red-900/40 border border-red-500 text-red-200 text-xs p-3 rounded-lg mb-4">
@@ -771,12 +885,24 @@ export default function HomePage() {
             <form onSubmit={handleGuardarHotelPartner} className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-300 mb-1">Nombre del Hotel / Resort</label>
-                <input type="text" required placeholder="Ej. Las Dunas Sun Resort" value={hotelForm.name} onChange={(e) => setHotelForm({ ...hotelForm, name: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Las Dunas Sun Resort"
+                  value={hotelForm.name}
+                  onChange={(e) => setHotelForm({ ...hotelForm, name: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                />
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Zona en Ica</label>
-                  <select value={hotelForm.zone} onChange={(e) => setHotelForm({ ...hotelForm, zone: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+                  <select
+                    value={hotelForm.zone}
+                    onChange={(e) => setHotelForm({ ...hotelForm, zone: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  >
                     <option value="HUACACHINA">Oasis de Huacachina</option>
                     <option value="PARACAS">Bahía de Paracas</option>
                     <option value="VINEDOS">Ruta de Viñedos</option>
@@ -784,9 +910,14 @@ export default function HomePage() {
                     <option value="NAZCA">Nazca</option>
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Categoría (Onboarding)</label>
-                  <select value={hotelForm.categoryTag} onChange={(e) => setHotelForm({ ...hotelForm, categoryTag: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+                  <select
+                    value={hotelForm.categoryTag}
+                    onChange={(e) => setHotelForm({ ...hotelForm, categoryTag: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  >
                     <option value="AVENTURA">Aventura</option>
                     <option value="PAREJA">Pareja / Romántico</option>
                     <option value="FAMILIA">Familia</option>
@@ -794,22 +925,56 @@ export default function HomePage() {
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Precio por noche (S/)</label>
-                  <input type="number" min="50" required placeholder="Ej. 280" value={hotelForm.pricePerNight} onChange={(e) => setHotelForm({ ...hotelForm, pricePerNight: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                  <input
+                    type="number"
+                    min="50"
+                    required
+                    placeholder="Ej. 280"
+                    value={hotelForm.pricePerNight}
+                    onChange={(e) => setHotelForm({ ...hotelForm, pricePerNight: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  />
                 </div>
+
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">URL de Fotografía</label>
-                  <input type="url" required placeholder="https://images.unsplash.com/..." value={hotelForm.imageUrl} onChange={(e) => setHotelForm({ ...hotelForm, imageUrl: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://images.unsplash.com/..."
+                    value={hotelForm.imageUrl}
+                    onChange={(e) => setHotelForm({ ...hotelForm, imageUrl: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  />
                 </div>
               </div>
+
               <div>
                 <label className="block text-xs text-slate-300 mb-1">Descripción de la experiencia</label>
-                <textarea rows="3" required placeholder="Describe los servicios, ubicación y beneficios incluidos..." value={hotelForm.description} onChange={(e) => setHotelForm({ ...hotelForm, description: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                <textarea
+                  rows="3"
+                  required
+                  placeholder="Describe los servicios, ubicación y beneficios incluidos..."
+                  value={hotelForm.description}
+                  onChange={(e) => setHotelForm({ ...hotelForm, description: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                />
               </div>
-              <button type="submit" disabled={guardandoHotel} className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition mt-2">
-                {guardandoHotel ? "Guardando..." : hotelEditandoId ? "Guardar Cambios" : "Publicar Alojamiento con Sello IcaStay"}
+
+              <button
+                type="submit"
+                disabled={guardandoHotel}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition mt-2"
+              >
+                {guardandoHotel
+                  ? "Guardando..."
+                  : hotelEditandoId
+                  ? "Guardar Cambios"
+                  : "Publicar Alojamiento con Sello IcaStay"}
               </button>
             </form>
           </div>
@@ -820,12 +985,20 @@ export default function HomePage() {
       {hotelSeleccionado && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative shadow-2xl">
-            <button onClick={() => setHotelSeleccionado(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+            <button
+              onClick={() => setHotelSeleccionado(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+
             <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-semibold">
               ✓ Reserva con Sello de Garantía IcaStay
             </span>
             <h3 className="text-xl font-bold mt-3">{hotelSeleccionado.name}</h3>
-            <p className="text-xs text-slate-400 mb-4">Tarifa verificada: S/ {hotelSeleccionado.pricePerNight} por noche</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Tarifa verificada: S/ {hotelSeleccionado.pricePerNight} por noche
+            </p>
 
             {errorReserva && (
               <div className="bg-red-900/40 border border-red-500 text-red-200 text-xs p-3 rounded-lg mb-4">
@@ -837,71 +1010,69 @@ export default function HomePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Fecha de Check-in</label>
-                  <input type="date" required value={reservaForm.checkIn} onChange={(e) => setReservaForm({ ...reservaForm, checkIn: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                  <input
+                    type="date"
+                    required
+                    value={reservaForm.checkIn}
+                    onChange={(e) => setReservaForm({ ...reservaForm, checkIn: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Fecha de Check-out</label>
-                  <input type="date" required value={reservaForm.checkOut} onChange={(e) => setReservaForm({ ...reservaForm, checkOut: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                  <input
+                    type="date"
+                    required
+                    value={reservaForm.checkOut}
+                    onChange={(e) => setReservaForm({ ...reservaForm, checkOut: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  />
                 </div>
               </div>
+
               <div>
                 <label className="block text-xs text-slate-300 mb-1">Número de huéspedes</label>
-                <input type="number" min="1" max="10" required value={reservaForm.guestsCount} onChange={(e) => setReservaForm({ ...reservaForm, guestsCount: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  required
+                  value={reservaForm.guestsCount}
+                  onChange={(e) => setReservaForm({ ...reservaForm, guestsCount: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                />
               </div>
+
               <div>
-                <label className="block text-xs text-slate-300 mb-1">Comentarios para recepción (Opcional)</label>
-                <textarea rows="2" placeholder="Ej. Llegaremos a las 3:00 PM, deseamos vista a la laguna..." value={reservaForm.notes} onChange={(e) => setReservaForm({ ...reservaForm, notes: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+                <label className="block text-xs text-slate-300 mb-1">
+                  Comentarios para recepción (Opcional)
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="Ej. Llegaremos a las 3:00 PM, deseamos vista a la laguna..."
+                  value={reservaForm.notes}
+                  onChange={(e) => setReservaForm({ ...reservaForm, notes: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                />
               </div>
 
               {nochesCalculadas > 0 && (
                 <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex items-center justify-between text-sm">
-                  <span className="text-slate-300">Total por {nochesCalculadas} {nochesCalculadas === 1 ? "noche" : "noches"}:</span>
-                  <span className="text-lg font-bold text-amber-400">S/ {nochesCalculadas * hotelSeleccionado.pricePerNight}</span>
+                  <span className="text-slate-300">
+                    Total por {nochesCalculadas} {nochesCalculadas === 1 ? "noche" : "noches"}:
+                  </span>
+                  <span className="text-lg font-bold text-amber-400">
+                    S/ {nochesCalculadas * hotelSeleccionado.pricePerNight}
+                  </span>
                 </div>
               )}
-              <button type="submit" disabled={enviandoReserva} className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition">
-                {enviandoReserva ? "Enviando solicitud..." : "Confirmar Solicitud de Reserva"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* MODAL DE LOGIN / REGISTRO */}
-      {mostrarModalAuth && (
-        <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative">
-            <button onClick={() => setMostrarModalAuth(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-            <div className="flex border-b border-slate-700 mb-6">
               <button
-                onClick={() => { setEsRegistro(false); setError(""); }}
-                className={`flex-1 pb-3 font-semibold ${!esRegistro ? "text-amber-400 border-b-2 border-amber-400" : "text-slate-400"}`}
+                type="submit"
+                disabled={enviandoReserva}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition"
               >
-                Iniciar Sesión
-              </button>
-              <button
-                onClick={() => { setEsRegistro(true); setError(""); }}
-                className={`flex-1 pb-3 font-semibold ${esRegistro ? "text-amber-400 border-b-2 border-amber-400" : "text-slate-400"}`}
-              >
-                Registrarse
-              </button>
-            </div>
-            {error && <div className="bg-red-900/40 border border-red-500 text-red-200 text-sm p-3 rounded-lg mb-4">❌ {error}</div>}
-            
-            <form onSubmit={handleSubmitAuth} className="space-y-4">
-              {esRegistro && (
-                <>
-                  <input type="text" required placeholder="Nombre completo o del Hotel" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" />
-                  <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
-                    <option value="GUEST">🧳 Soy Viajero / Huésped</option>
-                    <option value="HOTEL_PARTNER">🏨 Soy un Hotel en Ica (Partner)</option>
-                  </select>
-                </>
-              )}
-              <input type="email" required placeholder="Correo electrónico" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" />
-              <input type="password" required placeholder="Contraseña" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" />
-              <button type="submit" disabled={cargando} className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition">
-                {cargando ? "Procesando..." : esRegistro ? "Crear cuenta" : "Entrar"}
+                {enviandoReserva ? "Enviando solicitud..." : "Confirmar Solicitud de Reserva"}
               </button>
             </form>
           </div>
@@ -912,7 +1083,12 @@ export default function HomePage() {
       {reservaPorPagar && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative shadow-2xl">
-            <button onClick={() => setReservaPorPagar(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+            <button
+              onClick={() => setReservaPorPagar(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
             <span className="text-xs bg-sky-500/20 text-sky-300 px-2.5 py-1 rounded-full font-semibold">
               Paso 4 de Trazabilidad • Comprobación de Pago
             </span>
@@ -942,8 +1118,11 @@ export default function HomePage() {
                   <option value="TRANSFER">🏦 Transferencia Bancaria Directa</option>
                 </select>
               </div>
+
               <div>
-                <label className="block text-xs text-slate-300 mb-1">N° de Operación / Referencia del Comprobante</label>
+                <label className="block text-xs text-slate-300 mb-1">
+                  N° de Operación / Referencia del Comprobante
+                </label>
                 <input
                   type="text"
                   required
@@ -952,8 +1131,11 @@ export default function HomePage() {
                   onChange={(e) => setPagoForm({ ...pagoForm, paymentReference: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">Esta referencia se adjuntará en el Voucher Oficial visible para la recepción del hotel.</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Esta referencia se adjuntará en el Voucher Oficial visible para la recepción del hotel.
+                </p>
               </div>
+
               <button
                 type="submit"
                 disabled={procesandoPago}
@@ -968,8 +1150,105 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL DE VOUCHER OFICIAL COMPARTIDO (HUÉSPED Y HOTEL PARTNER) */}
+      {/* MODAL DE VOUCHER OFICIAL COMPARTIDO (FASE 7 - v2.0) */}
       <VoucherModal reserva={voucherActivo} onClose={() => setVoucherActivo(null)} />
+
+      {/* MODAL DE RESEÑAS VERIFICADAS Y GESTIÓN COMERCIAL (FASE 8 - v2.0) */}
+      <ReviewsModal
+        hotel={hotelResenasActivo}
+        user={user}
+        token={token}
+        onClose={() => setHotelResenasActivo(null)}
+        onReviewAdded={recargarCatalogoPublico}
+      />
+
+      {/* MODAL DE LOGIN / REGISTRO */}
+      {mostrarModalAuth && (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative">
+            <button
+              onClick={() => setMostrarModalAuth(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+            <div className="flex border-b border-slate-700 mb-6">
+              <button
+                onClick={() => {
+                  setEsRegistro(false);
+                  setError("");
+                }}
+                className={`flex-1 pb-3 font-semibold ${
+                  !esRegistro ? "text-amber-400 border-b-2 border-amber-400" : "text-slate-400"
+                }`}
+              >
+                Iniciar Sesión
+              </button>
+              <button
+                onClick={() => {
+                  setEsRegistro(true);
+                  setError("");
+                }}
+                className={`flex-1 pb-3 font-semibold ${
+                  esRegistro ? "text-amber-400 border-b-2 border-amber-400" : "text-slate-400"
+                }`}
+              >
+                Registrarse
+              </button>
+            </div>
+            {error && (
+              <div className="bg-red-900/40 border border-red-500 text-red-200 text-sm p-3 rounded-lg mb-4">
+                ❌ {error}
+              </div>
+            )}
+            <form onSubmit={handleSubmitAuth} className="space-y-4">
+              {esRegistro && (
+                <>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nombre completo o del Hotel"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  />
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  >
+                    <option value="GUEST">🧳 Soy Viajero / Huésped</option>
+                    <option value="HOTEL_PARTNER">🏨 Soy un Hotel en Ica (Partner)</option>
+                  </select>
+                </>
+              )}
+              <input
+                type="email"
+                required
+                placeholder="Correo electrónico"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              />
+              <input
+                type="password"
+                required
+                placeholder="Contraseña"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              />
+              <button
+                type="submit"
+                disabled={cargando}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition"
+              >
+                {cargando ? "Procesando..." : esRegistro ? "Crear cuenta" : "Entrar"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

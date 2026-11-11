@@ -8,7 +8,12 @@ const NOMBRES_ZONA = {
   NAZCA: "🛩️ Nazca",
 };
 
-export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel }) {
+export default function HotelCard({
+  hotel,
+  userPreference,
+  onSelectPartnerHotel,
+  onOpenReviews,
+}) {
   const coincideConPerfil = userPreference && hotel.categoryTag === userPreference;
   const disponible = hotel.isAvailable !== false;
 
@@ -23,7 +28,6 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
       }`}
     >
       <div>
-        {/* Imagen y Etiquetas Superiores */}
         <div className="relative h-48 w-full bg-slate-900">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -56,7 +60,6 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
             )}
           </div>
 
-          {/* Indicador de Calificación (Fase 8 / v2.0) */}
           {hotel.avgRating && (
             <div className="absolute bottom-3 right-3 bg-slate-950/90 border border-amber-500/40 text-amber-300 text-xs font-bold px-2.5 py-1 rounded-lg">
               ★ {hotel.avgRating} ({hotel.totalReviews})
@@ -64,7 +67,6 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
           )}
         </div>
 
-        {/* Contenido de la ficha */}
         <div className="p-5">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
             <span>{NOMBRES_ZONA[hotel.zone] || hotel.zone}</span>
@@ -77,10 +79,21 @@ export default function HotelCard({ hotel, userPreference, onSelectPartnerHotel 
           <p className="text-sm text-slate-300 line-clamp-3 mb-4">
             {hotel.description}
           </p>
+
+          <button
+            onClick={() => onOpenReviews && onOpenReviews(hotel)}
+            className="text-xs text-amber-300 hover:text-amber-200 font-semibold flex items-center gap-1.5 bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-lg transition"
+          >
+            <span>
+              ★{" "}
+              {hotel.avgRating
+                ? `${hotel.avgRating} (${hotel.totalReviews} reseñas)`
+                : "Ver / Dejar Reseñas"}
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Pie de tarjeta: Precio y Acción condicional (RN-02 y RN-05) */}
       <div className="p-5 pt-0 border-t border-slate-700/60 mt-2 flex items-center justify-between">
         <div>
           <span className="text-xs text-slate-400 block">Precio por noche</span>
