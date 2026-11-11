@@ -26,13 +26,16 @@ const getHotels = async (req, res) => {
       ],
     });
 
-    // Calculamos promedio de estrellas y cantidad de reseñas para cada tarjeta
+    // Calculamos promedio de estrellas y cantidad de reseñas de forma segura
     const hotelesConEstadisticas = hoteles.map((h) => {
-      const totalReviews = h.reviews.length;
+      const reviewsSeguras = h.reviews || []; // Evita errores si reviews es undefined
+      const totalReviews = reviewsSeguras.length;
       const avgRating =
         totalReviews > 0
-          ? Number((h.reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1))
+          ? Number((reviewsSeguras.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1))
           : null;
+      
+      // Extraemos reviews para no enviarlo crudo al frontend
       const { reviews, ...restoHotel } = h;
       return { ...restoHotel, totalReviews, avgRating };
     });
@@ -43,7 +46,6 @@ const getHotels = async (req, res) => {
     res.status(500).json({ error: 'Error interno al cargar el catálogo de hoteles.' });
   }
 };
-
 // 2. Obtener los hoteles que pertenecen al Partner autenticado (RF-06)
 const getPartnerHotels = async (req, res) => {
   try {

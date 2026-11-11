@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. Crear solicitud de reserva (Solo GUEST en Hoteles Partner)
+// 1. Crear solicitud de reserva (Solo GUEST en Hoteles Partner disponibles)
 const createBooking = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -10,13 +10,10 @@ const createBooking = async (req, res) => {
     if (!hotelId || !checkIn || !checkOut) {
       return res.status(400).json({ error: 'Hotel, fecha de ingreso y fecha de salida son obligatorios.' });
     }
-    if (!hotel.isAvailable) {
-      return res.status(400).json({ error: 'Este hotel ha pausado temporalmente la recepción de nuevas reservas.' });
-    }
+
     const fechaInicio = new Date(checkIn);
     const fechaFin = new Date(checkOut);
 
-    // Regla de Negocio RN-03: Validar coherencia de fechas
     const diferenciaMs = fechaFin - fechaInicio;
     const nights = Math.ceil(diferenciaMs / (1000 * 60 * 60 * 24));
 
@@ -24,13 +21,15 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'La fecha de salida debe ser al menos 1 día posterior a la fecha de ingreso.' });
     }
 
-    // Verificar que el hotel exista y sea Partner Verificado (RN-02)
     const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
     if (!hotel) {
       return res.status(404).json({ error: 'El hotel seleccionado no existe.' });
     }
     if (!hotel.isPartner) {
       return res.status(400).json({ error: 'Este alojamiento pertenece al directorio externo y no admite reservas internas.' });
+    }
+    if (!hotel.isAvailable) {
+      return res.status(400).json({ error: 'Este hotel ha pausado temporalmente la recepción de nuevas reservas.' });
     }
 
     const totalPrice = nights * hotel.pricePerNight;
@@ -46,9 +45,11 @@ const createBooking = async (req, res) => {
         totalPrice,
         notes: notes || null,
         status: 'PENDING',
+        paymentStatus: 'UNPAID',
       },
       include: {
-        hotel: { select: { name: true, zone: true, imageUrl: true } },
+        hotel: { select: { name: true, zone: true, imageUrl: true, pricePerNight: true } },
+        user: { select: { name: true, email: true } },
       },
     });
 
@@ -71,6 +72,9 @@ const getMyBookings = async (req, res) => {
       include: {
         hotel: {
           select: { name: true, zone: true, imageUrl: true, pricePerNight: true },
+        },
+        user: {
+          select: { name: true, email: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -97,7 +101,7 @@ const getPartnerBookings = async (req, res) => {
         hotel: { ownerId: partnerId },
       },
       include: {
-        hotel: { select: { name: true, zone: true } },
+        hotel: { select: { name: true, zone: true, pricePerNight: true } },
         user: { select: { name: true, email: true, travelPreference: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -126,7 +130,6 @@ const updateBookingStatus = async (req, res) => {
       return res.status(404).json({ error: 'Reserva no encontrada.' });
     }
 
-    // CASO A: El Huésped desea CANCELAR su propia reserva (RN-04)
     if (role === 'GUEST') {
       if (reserva.userId !== userId) {
         return res.status(403).json({ error: 'No tienes permiso sobre esta reserva.' });
@@ -141,7 +144,6 @@ const updateBookingStatus = async (req, res) => {
       }
     }
 
-    // CASO B: El Hotel Partner desea CONFIRMAR o RECHAZAR la solicitud
     if (role === 'HOTEL_PARTNER') {
       if (reserva.hotel.ownerId !== userId) {
         return res.status(403).json({ error: 'Esta reserva no pertenece a ninguno de tus hoteles.' });
@@ -155,7 +157,7 @@ const updateBookingStatus = async (req, res) => {
       where: { id: bookingId },
       data: { status },
       include: {
-        hotel: { select: { name: true, zone: true, imageUrl: true } },
+        hotel: { select: { name: true, zone: true, imageUrl: true, pricePerNight: true } },
         user: { select: { name: true, email: true, travelPreference: true } },
       },
     });
@@ -170,9 +172,71 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
+// 5. Registrar pago de reserva confirmada y emitir Voucher Oficial (RF-07 / RN-06)
+const payBooking = async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const { paymentMethod, paymentReference } = req.body;
+
+    if (!paymentMethod || !paymentReference) {
+      return res.status(400).json({ error: 'Selecciona el método de pago e ingresa el número o referencia de operación.' });
+    }
+
+    const reserva = await prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!reserva) {
+      return res.status(404).json({ error: 'Reserva no encontrada.' });
+    }
+
+    if (reserva.userId !== userId) {
+      return res.status(403).json({ error: 'Solo el titular de la reserva puede registrar el pago.' });
+    }
+
+    // Regla RN-06: Solo se puede pagar si el hotel ya confirmó cupo (CONFIRMED) y sigue UNPAID
+    if (reserva.status !== 'CONFIRMED') {
+      return res.status(400).json({ error: 'El hotel debe confirmar el cupo antes de proceder al pago.' });
+    }
+
+    if (reserva.paymentStatus === 'PAID') {
+      return res.status(400).json({ error: 'Esta reserva ya figura como pagada.' });
+    }
+
+    // Generamos el código único de Voucher Oficial IcaStay
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const voucherCode = `ICA-2026-B${bookingId}-${randomSuffix}`;
+
+    const reservaPagada = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        paymentStatus: 'PAID',
+        paymentMethod,
+        paymentReference,
+        voucherCode,
+        paidAt: new Date(),
+      },
+      include: {
+        hotel: { select: { name: true, zone: true, imageUrl: true, pricePerNight: true } },
+        user: { select: { name: true, email: true, travelPreference: true } },
+      },
+    });
+
+    res.status(200).json({
+      mensaje: 'Pago registrado y Voucher Oficial emitido exitosamente',
+      booking: reservaPagada,
+    });
+  } catch (error) {
+    console.error('Error al procesar pago:', error);
+    res.status(500).json({ error: 'Error interno al procesar el pago de la reserva.' });
+  }
+};
+
 module.exports = {
   createBooking,
   getMyBookings,
   getPartnerBookings,
   updateBookingStatus,
+  payBooking,
 };
