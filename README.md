@@ -3,14 +3,13 @@
 **IcaStay** es una plataforma web Full-Stack (arquitectura PERN / Next.js) diseñada para el sector turístico de la región de Ica, Perú (Huacachina, Paracas, Ruta de Viñedos, Ica Centro y Nazca). Combina un **directorio híbrido** con un **sistema de reservas con trazabilidad en tiempo real** para eliminar la incertidumbre del viajero.
 
 ---
-
-## ✨ Propuesta de Valor y Características Principales
+## ✨ Propuesta de Valor y Características Principales (Versión 2.0)
 
 * **Modelo Híbrido (`RN-02`):** Distingue entre **Hoteles Partner Verificados** (con el *Sello de Garantía IcaStay* y reservas internas) y **Hoteles de Directorio Externo** (con redirección informativa).
 * **Onboarding Profiling (`RF-02`):** Perfilamiento inteligente del viajero (*Aventura, Pareja, Familia, Negocios*) tras el registro para destacar alojamientos afines en el catálogo.
-* **Trazabilidad en Tiempo Real (`RF-04` / `RF-05`):** Barra de progreso interactiva donde el huésped visualiza el estado exacto de su solicitud (`PENDING` ➔ `CONFIRMED` / `REJECTED` / `CANCELLED`).
-* **Reglas de Negocio Blindadas (`RN-03` / `RN-04`):** Cálculo automático de noches y tarifas en el servidor, y cancelación autónoma habilitada exclusivamente mientras la reserva permanece en estado `PENDING`.
-
+* **Autogestión de Catálogo Partner (`RF-06` / `RN-05`):** Panel exclusivo donde el socio hotelero registra nuevos alojamientos, edita tarifas/fotos y pausa o activa la disponibilidad de cupos en tiempo real.
+* **Trazabilidad de 4 Hitos, Pagos y Voucher Oficial Compartido (`RF-07` / `RN-06`):** Flujo completo desde la solicitud (`PENDING`) hasta la confirmación (`CONFIRMED`), registro de pago (`Yape`, `Plin`, `Tarjeta`, `Transferencia`) y emisión del **Comprobante Oficial Verificado** (imprimible en PDF y compartido entre Huésped y Recepción).
+* **Reputación y Reseñas con Verificación Antifraude (`RF-08` / `RN-07`):** Sistema de calificación de 1 a 5 estrellas con filtros analíticos (*Positivas, Críticas, por estrella exacta*), asignación automática en servidor del sello **`✓ Huésped con Estadía Verificada`**, fijado comercial de reseñas destacadas y respuesta oficial de la administración del hotel.
 ---
 
 ## 🛠️ Stack Tecnológico
