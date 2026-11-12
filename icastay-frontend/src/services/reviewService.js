@@ -1,4 +1,5 @@
-const API_URL = "http://localhost:4000/api/reviews";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = `${BASE_URL}/api/reviews`;
 
 export const fetchHotelReviews = async (hotelId) => {
   const res = await fetch(`${API_URL}/hotel/${hotelId}`);
@@ -7,8 +8,8 @@ export const fetchHotelReviews = async (hotelId) => {
   return data;
 };
 
-export const postHotelReview = async (hotelId, reviewData, token) => {
-  const res = await fetch(`${API_URL}/hotel/${hotelId}`, {
+export const createReview = async (reviewData, token) => {
+  const res = await fetch(API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -17,20 +18,20 @@ export const postHotelReview = async (hotelId, reviewData, token) => {
     body: JSON.stringify(reviewData),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Error al publicar reseña");
+  if (!res.ok) throw new Error(data.error || "Error al enviar la reseña");
   return data;
 };
 
-export const manageReviewPartner = async (reviewId, payload, token) => {
-  const res = await fetch(`${API_URL}/${reviewId}/manage`, {
+export const updateReview = async (reviewId, updateData, token) => {
+  const res = await fetch(`${API_URL}/${reviewId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(updateData),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Error al gestionar reseña");
+  if (!res.ok) throw new Error(data.error || "Error al actualizar la reseña");
   return data;
 };

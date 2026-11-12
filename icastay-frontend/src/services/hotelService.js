@@ -1,8 +1,8 @@
-const API_URL = "http://localhost:4000/api/hotels";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = `${BASE_URL}/api/hotels`;
 
 export const fetchHotels = async (filtros = {}) => {
   const params = new URLSearchParams();
-
   if (filtros.zone && filtros.zone !== "TODAS") params.append("zone", filtros.zone);
   if (filtros.maxPrice) params.append("maxPrice", filtros.maxPrice);
   if (filtros.categoryTag && filtros.categoryTag !== "TODAS") params.append("categoryTag", filtros.categoryTag);
@@ -17,7 +17,6 @@ export const fetchHotels = async (filtros = {}) => {
   return data;
 };
 
-// Obtener los hoteles propios del Partner autenticado (RF-06)
 export const fetchMyPartnerHotels = async (token) => {
   const res = await fetch(`${API_URL}/my-hotels`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -27,7 +26,6 @@ export const fetchMyPartnerHotels = async (token) => {
   return data;
 };
 
-// Crear nuevo hotel Partner (RF-06)
 export const createHotel = async (hotelData, token) => {
   const res = await fetch(API_URL, {
     method: "POST",
@@ -42,7 +40,6 @@ export const createHotel = async (hotelData, token) => {
   return data;
 };
 
-// Editar hotel existente del Partner (RF-06)
 export const updateHotel = async (hotelId, hotelData, token) => {
   const res = await fetch(`${API_URL}/${hotelId}`, {
     method: "PUT",
@@ -57,7 +54,6 @@ export const updateHotel = async (hotelId, hotelData, token) => {
   return data;
 };
 
-// Pausar o activar disponibilidad en tiempo real (RN-05)
 export const changeHotelAvailability = async (hotelId, isAvailable, token) => {
   const res = await fetch(`${API_URL}/${hotelId}/availability`, {
     method: "PATCH",

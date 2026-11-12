@@ -1,35 +1,36 @@
-const API_URL = "http://localhost:4000/api/auth";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = `${BASE_URL}/api/auth`;
 
-export const registerUser = async (datosUsuario) => {
+export const registerUser = async (userData) => {
   const res = await fetch(`${API_URL}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(datosUsuario),
+    body: JSON.stringify(userData),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Error al registrarse");
+  if (!res.ok) throw new Error(data.error || "Error al registrar usuario");
   return data;
 };
 
-export const loginUser = async (credenciales) => {
+export const loginUser = async (credentials) => {
   const res = await fetch(`${API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credenciales),
+    body: JSON.stringify(credentials),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
   return data;
 };
 
-export const saveTravelPreference = async (travelPreference, token) => {
+export const saveTravelPreference = async (preference, token) => {
   const res = await fetch(`${API_URL}/preferences`, {
-    method: "PUT",
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ travelPreference }),
+    body: JSON.stringify({ travelPreference: preference }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error al guardar preferencia");
