@@ -17,7 +17,9 @@ export const createBookingRequest = async (datosReserva, token) => {
 
 export const fetchMyBookings = async (token) => {
   const res = await fetch(`${API_URL}/my-bookings`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error al cargar tus reservas");
@@ -26,7 +28,9 @@ export const fetchMyBookings = async (token) => {
 
 export const fetchPartnerBookings = async (token) => {
   const res = await fetch(`${API_URL}/partner-bookings`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error al cargar reservas del hotel");
@@ -44,5 +48,19 @@ export const changeBookingStatus = async (bookingId, status, token) => {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "No se pudo actualizar el estado");
+  return data;
+};
+
+export const payBookingRequest = async (bookingId, datosPago, token) => {
+  const res = await fetch(`${API_URL}/${bookingId}/pay`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(datosPago),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "No se pudo procesar el pago");
   return data;
 };
