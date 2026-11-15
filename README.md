@@ -19,6 +19,8 @@
 * **Base de Datos e Infraestructura:** PostgreSQL 16 (contenedorizado en Docker) y Prisma ORM.
 
 ---
+🌐 **Demo en Vivo (Producción):** [https://plataforma-ica-stay.vercel.app](https://plataforma-ica-stay.vercel.app)
+---
 
 ## 🚀 Guía de Instalación y Ejecución Local
 
@@ -27,5 +29,3 @@
 git clone <URL_DE_TU_REPOSITORIO>
 cd icastay
 docker compose up -d
-
-🌐 **Demo en Vivo (Producción):** [https://plataforma-ica-stay.vercel.app](https://plataforma-ica-stay.vercel.app)
